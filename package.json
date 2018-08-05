@@ -1,0 +1,11 @@
+{
+  "name": "crow-bot",
+  "version": "1.0.0",
+  "description": "A simple discord bot for better experiences.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Zane",
+  "license": "ISC"
+}
