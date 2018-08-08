@@ -1,17 +1,38 @@
+const fs = require('fs'); //Native Node file system
 const Discord = require('discord.js');
 const { prefix, token } = require('./config.json');
+
 const client = new Discord.Client();
+client.commands = new Discord.Collection();
+const commandFiles = fs.readdirSync('./commands').filter(file => file.endsWith('.js'));
+
+for (const file of commandFiles) {
+  const command = require(`./commands/${file}`);
+
+  //set a new item in the Collection
+  //with the key as the command name and the value as the exported module
+  client.commands.set(command.name, command);
+}
 
 client.on('ready', () => {
     console.log('Ready!');
 });
 
+//Need to add args-info, avatar, kick and prune commands to "command folder"
 //Don't forget to delete the token if you are using a public repo!!!
 client.login(token);
 
 client.on('message', message => {
-  if (message.content === `${prefix}pun`) {
-    message.channel.send('What is a pirates favourite letter? Ayyy it be the sea!');
+  if (!message.content.startsWith(prefix) || message.author.bot) return;
+
+  const args = message.content.slice(prefix.length).split(/ +/);
+  const commandName = args.shift().toLowerCase;
+
+  if (command === 'ping') {
+    client.commands.get('ping').execute(message, args);
+  }
+  else if (command === `pun`) {
+    client.command.get('puns').execute(message, args);
   }
   else if (message.content === `${prefix}time`) {
     let time = new Date();
@@ -19,11 +40,8 @@ client.on('message', message => {
     let minutes = time.getMinutes;
     message.channel.send('The current time is: ' + time.getHours + ':' + time.getMinutes);
   }
-  else if (message.content === `${prefix}server`) {
-    message.channel.send(`Server name: ${message.guild.name}
-    \nTotal members: ${message.guild.memberCount}
-    \nCreated: ${message.guild.createdAt}
-    \nServer Region: ${message.guild.region}`);
+  else if (command === `server`) {
+    client.command.get('server').execute(message, args);
   }
   else if (message.content === `${prefix}userinfo`) {
     message.channel.send(`Your username is: ${message.author.username}
@@ -33,13 +51,7 @@ client.on('message', message => {
     \nYour tag: ${message.author.tag}`);
   }
   else if (command === 'args-info') {
-    if (!args.length) {
-      return message.channel.send(`You didn't provide any argument, ${message.author}!`);
-    } else if (args[0] === 'foo') {
-      return message.channel.send('bar');
-    }
-
-    message.channel.send(`First argument: ${args[0]}`);
+    client.command.get('args-info').execute(message, args);
   }
   else if (command === 'kick') {
     if (!message.mentions.users.size) {
@@ -72,9 +84,17 @@ client.on('message', message => {
     message.channel.bulkDelete(amount);
   }
 
-  if (!message.content.startsWith(prefix) || message.author.bot) return;
+  if (!client.commands.has(commandName)) return;
+  const command = client.commands.get(commandName);
 
-  const args = message.content.slice(prefix.length).split(/ +/);
-  const command = args.shift().toLowerCase();
-})
+  try {
+    command.execute(message, args);
+  }
+  catch (error) {
+    console.error(error);
+    message.reply('There was an error trying to execute that command');
+  }
+});
+
+client.login(token);
 
