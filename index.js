@@ -3,6 +3,7 @@ const Discord = require('discord.js');
 const { prefix, token } = require('./config.json');
 
 const client = new Discord.Client();
+const cooldowns = new Discord.Collection();
 client.commands = new Discord.Collection();
 const commandFiles = fs.readdirSync('./commands').filter(file => file.endsWith('.js'));
 
@@ -54,11 +55,7 @@ client.on('message', message => {
     client.command.get('args-info').execute(message, args);
   }
   else if (command === 'kick') {
-    if (!message.mentions.users.size) {
-      return message.reply('You need to tag a user in order to kick them!');
-    }
-    const targetUser = message.mentions.users.first();
-    message.channel.send(`You wanted to kick?: ${targetUser.username}`);
+    client.command.get('kick').execute(message, args);
   }
   else if (command === 'avatar') {
     if (!message.mentions.users.size) {
@@ -86,6 +83,37 @@ client.on('message', message => {
 
   if (!client.commands.has(commandName)) return;
   const command = client.commands.get(commandName);
+
+  if (command.guildOnly && message.channel.type !== 'text') {
+    return message.reply('I can\'t execute that command inside DMs!');
+  }
+
+  if (command.args && !args.length) {
+    return message.channel.send(`You didn't provide any arguments, ${message.author}!`);
+  }
+
+  if (!cooldowns.has(command.name)) {
+    cooldowns.set(command.name, new Discord.Collection());
+  }
+
+  const now = Date.now();
+  const timestamps = cooldowns.get(command.name);
+  const cooldownAmount = (command.cooldown || 3) * 1000;
+
+  if(!timestamps.has(message.author.id)) {
+    timestamps.set(message.author.id, now);
+    setTimeout(() => timestamps.delete(message.author.id), cooldownAmount);
+  } else {
+    const expirationTime = timestamps.get(message.author.id) + cooldownAmount;
+
+    if (now < expirationTime) {
+      const timeLeft = (expirationTime - now) / 1000;
+      return message.reply(`Please wait ${timeLeft.toFixed(1)} more seconds before reuse`);
+    }
+
+    timestamps.set(message.author.id, now);
+    setTimeout(() => timestamps.delete(message.author.id), cooldownAmount);
+  }
 
   try {
     command.execute(message, args);
