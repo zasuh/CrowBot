@@ -32,6 +32,9 @@ client.on('message', message => {
   if (command === 'ping') {
     client.commands.get('ping').execute(message, args);
   }
+  else if (command === 'react') {
+    client.commands.get('react').execute(message, args);
+  }
   else if (command === `pun`) {
     client.command.get('puns').execute(message, args);
   }
@@ -58,15 +61,7 @@ client.on('message', message => {
     client.command.get('kick').execute(message, args);
   }
   else if (command === 'avatar') {
-    if (!message.mentions.users.size) {
-      return message.reply(`Your avatar: ${message.author.displayAvatarURL()}`);
-    }
-
-    const avatarList = message.mentions.users.map(user => {
-      return `${user.username}'s avatar: ${user.displayAvatarURL()}`;
-    })
-
-    message.channel.send(avatarList);
+    client.command.get('avatar').execute(message, args);
   }
   else if (command === 'prune') {
     const amount = parseInt(args[0]);
@@ -81,8 +76,10 @@ client.on('message', message => {
     message.channel.bulkDelete(amount);
   }
 
-  if (!client.commands.has(commandName)) return;
-  const command = client.commands.get(commandName);
+  const command = client.commands.get(commandName)
+    || client.commands.find(cmd => cmd.aliases && cmd.aliases.includes(commandName));
+
+  if (!command) return;
 
   if (command.guildOnly && message.channel.type !== 'text') {
     return message.reply('I can\'t execute that command inside DMs!');
